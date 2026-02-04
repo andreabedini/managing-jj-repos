@@ -1,0 +1,19 @@
+{
+  "name": "managing-jj-repos",
+  "description": "Comprehensive Jujutsu (jj) version control support with Git migration guide, workflows, and troubleshooting",
+  "version": "1.0.0",
+  "author": {
+    "name": "Andrea Bedini"
+  },
+  "homepage": "https://github.com/anthropics/agent-skills",
+  "repository": "https://github.com/anthropics/agent-skills",
+  "license": "MIT",
+  "keywords": [
+    "jj",
+    "jujutsu",
+    "version-control",
+    "git",
+    "vcs",
+    "dvcs"
+  ]
+}
