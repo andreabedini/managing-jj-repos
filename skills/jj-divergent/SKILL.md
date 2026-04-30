@@ -33,7 +33,7 @@ For each root, find both versions:
 
 ```bash
 jj log -r 'all() & change_id(CHANGEID)' --no-graph \
-  -T 'commit_id.short(8) ++ " " ++ if(immutable,"I","M") ++ " " ++ bookmarks ++ " " ++ description.first_line() ++ "\n"'
+  -T 'separate(" ", commit_id.short(8), if(immutable,"I","M"), bookmarks, description.first_line()) ++ "\n"'
 ```
 
 | Situation | Fix |
@@ -90,7 +90,7 @@ When a branch is built on the old version of a rebased commit:
 # Find what's keeping the old parent alive
 OLD_PARENT_CHID=$(jj log -r 'OLD_PARENT' --no-graph -T 'change_id')
 jj log -r "all() & change_id($OLD_PARENT_CHID)" --no-graph \
-  -T 'commit_id.short(8) ++ " " ++ bookmarks ++ "\n"'
+  -T 'separate(" ", commit_id.short(8), bookmarks) ++ "\n"'
 
 # Check for potential conflicts (overlapping files = conflict risk)
 jj diff -r BRANCH_TIP --stat
@@ -113,7 +113,7 @@ When old commits can't be abandoned because remote bookmarks make them immutable
 ```bash
 # Find which remote bookmarks are keeping old commits alive
 jj log -r 'remote_bookmarks(remote=REMOTE) & descendants(OLD_ROOT_COMMIT)' \
-  --no-graph -T 'commit_id.short(8) ++ " " ++ bookmarks ++ "\n"'
+  --no-graph -T 'separate(" ", commit_id.short(8), bookmarks) ++ "\n"'
 
 # Forget the bookmark (reversible — comes back on next jj git fetch)
 jj bookmark forget BOOKMARK_NAME --include-remotes
