@@ -1,6 +1,6 @@
 ---
 name: jj-reference
-description: Background knowledge about Jujutsu (jj) terminology, complete command reference, and revset syntax. Provides comprehensive reference material for jj operations.
+description: Use when looking up jj command options, flags, or syntax; when unsure about revset expressions or template syntax; when needing definitions of jj-specific terms (change ID, working copy, bookmark, operation log); or when other jj skills don't cover sufficient detail on a specific command.
 user-invocable: false
 ---
 

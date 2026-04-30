@@ -119,7 +119,7 @@ Understanding these fundamental differences will help you think in jj:
 | `git reset --hard HEAD~1` | `jj abandon @` | Remove current commit |
 | `git reset --hard <commit>` | `jj edit <rev>` + `jj abandon` | Two steps |
 | `git checkout -- <file>` | `jj restore <file>` | Restore file |
-| `git revert <commit>` | `jj backout -r <rev>` | Create inverse commit |
+| `git revert <commit>` | `jj revert -r <rev> --onto @` | Create inverse commit |
 | `git reflog` + reset | `jj undo` | Undo last operation |
 
 ### Rewriting History

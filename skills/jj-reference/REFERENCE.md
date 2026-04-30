@@ -9,6 +9,7 @@ Comprehensive reference for all jj commands with common options and usage patter
 - [Creating & Editing Commits](#creating--editing-commits)
 - [Rewriting History](#rewriting-history)
 - [Bookmarks](#bookmarks)
+- [Tags](#tags)
 - [Working Copy Management](#working-copy-management)
 - [Recovery & Operations](#recovery--operations)
 - [Configuration](#configuration)
@@ -269,6 +270,75 @@ jj diff --summary          # Show changed files only
 
 ---
 
+### `jj diffedit`
+
+Touch up the content changes in a revision using a diff editor.
+
+**Usage:**
+```bash
+jj diffedit [OPTIONS] [FILESETS]...
+```
+
+**Options:**
+- `-r <REVSET>` - Revision to touch up (default: `@`)
+- `--from <REVSET>` - Show changes from this revision
+- `--to <REVSET>` - Edit changes in this revision
+- `--tool <NAME>` - Specify diff editor to use
+- `--restore-descendants` - Preserve content (not diff) when rebasing descendants
+
+**Examples:**
+```bash
+jj diffedit                        # Touch up working copy
+jj diffedit -r abc123              # Touch up specific commit
+jj diffedit --from @- --to @       # Edit changes between two commits
+```
+
+For moving changes between revisions interactively, prefer `jj squash -i`. For restoring entire files, use `jj restore`.
+
+---
+
+### `jj interdiff`
+
+Show differences between the diffs of two revisions — i.e., compare what each commit *does* rather than comparing file contents directly.
+
+Technically, jj rebases `--from` onto `--to`'s parents, then diffs the result against `--to`. This means differences in parent history don't pollute the comparison.
+
+**Usage:**
+```bash
+jj interdiff --from <REVSET> --to <REVSET> [FILESETS]...
+```
+
+**Key options:**
+- `-f, --from <REVSET>` - First revision (default: `@`)
+- `-t, --to <REVSET>` - Second revision (default: `@`)
+- `--git` - Git-format diff output
+- `--stat` - Histogram of changes
+- `--summary / -s` - Files changed only, no line diff
+- `--name-only` - Paths only
+- `--color-words` - Word-level diff
+- `-w` - Ignore all whitespace
+- `[FILESETS]...` - Restrict to specific paths
+
+**Contrast with `jj diff --from A --to B`:**
+- `jj diff --from A --to B` compares file trees — it includes everything between A and B's parents
+- `jj interdiff --from A --to B` compares patches — if A and B touch the same files in the same way, output is empty, regardless of where they sit in history
+
+**Examples:**
+```bash
+# Compare how a change has evolved since it was last pushed
+jj interdiff --from push-xyz@origin --to push-xyz
+
+# Check if two divergent versions of a commit are equivalent (empty = identical patches)
+jj interdiff --from COMMIT_A --to COMMIT_B
+
+# Same, git-format output for piping/scripting
+jj interdiff --from COMMIT_A --to COMMIT_B --git
+```
+
+**Use `jj evolog -p` instead** when you want the full evolution of a single change across all its rewrites.
+
+---
+
 ### `jj evolog`
 
 Show evolution of a change over time.
@@ -408,6 +478,81 @@ jj edit abc123      # Move to specific commit
 ```
 
 **Warning:** Changes your working directory files!
+
+---
+
+### `jj next`
+
+Move the working copy to a child revision.
+
+**Usage:**
+```bash
+jj next [OPTIONS] [OFFSET]
+```
+
+**Options:**
+- `[OFFSET]` - How many revisions to move forward (default: 1)
+- `-e, --edit` - Edit the target commit directly instead of creating a new commit on top
+- `--conflict` - Jump to the next conflicted descendant
+
+**Examples:**
+```bash
+jj next          # Move to child (new commit on top)
+jj next 3        # Move forward 3 revisions
+jj next --edit   # Edit the child commit directly
+jj next --conflict  # Jump to next conflict
+```
+
+---
+
+### `jj prev`
+
+Move the working copy to a parent revision.
+
+**Usage:**
+```bash
+jj prev [OPTIONS] [OFFSET]
+```
+
+**Options:**
+- `[OFFSET]` - How many revisions to move backward (default: 1)
+- `-e, --edit` - Edit the parent commit directly
+- `--conflict` - Jump to the previous conflicted ancestor
+
+**Examples:**
+```bash
+jj prev          # Move to parent
+jj prev 2        # Move back 2 revisions
+jj prev --edit   # Edit the parent directly
+```
+
+---
+
+### `jj metaedit`
+
+Modify the metadata of a revision without changing its content.
+
+**Usage:**
+```bash
+jj metaedit [OPTIONS] [REVSETS]...
+```
+
+**Options:**
+- `--update-change-id` - Generate a new change ID for the revision
+- `-m <MESSAGE>` - Update the description
+- `--update-author` - Update author to the configured user
+- `--author <AUTHOR>` - Set author to the provided string (e.g. `"Name <email>"`)
+- `--update-author-timestamp` - Update author date to now
+- `--author-timestamp <TIMESTAMP>` - Set author date (RFC2822 or RFC3339)
+- `--force-rewrite` - Rewrite commit even if no metadata changed (updates committer timestamp)
+
+**Examples:**
+```bash
+jj metaedit --update-change-id @       # Resolve divergence by assigning fresh change ID
+jj metaedit --update-author            # Fix author on working copy
+jj metaedit --author "Name <e@mail>"   # Set specific author
+jj metaedit -m "Better description"    # Update description without opening editor
+```
 
 ---
 
@@ -578,20 +723,119 @@ jj parallelize @---::@        # Make last 3 commits siblings
 
 ---
 
-### `jj backout`
+### `jj revert`
 
-Create commit that reverses changes.
+Apply the reverse of one or more revisions (replaces the old `jj backout`).
 
 **Usage:**
 ```bash
-jj backout -r <revision>
+jj revert -r <REVSETS> <--onto <REVSETS>|--insert-after <REVSETS>|--insert-before <REVSETS>>
 ```
 
-Creates inverse commit (like `git revert`).
+**Options:**
+- `-r <REVSETS>` - The revision(s) to reverse
+- `-o, --onto <REVSETS>` - Apply reverse on top of these revisions (aliases: `-d`, `--destination`)
+- `-A, --insert-after <REVSETS>` - Insert after these revisions (aliases: `--after`)
+- `-B, --insert-before <REVSETS>` - Insert before these revisions (aliases: `--before`)
 
 **Examples:**
 ```bash
-jj backout -r abc123          # Create inverse of commit
+jj revert -r abc123 --onto @        # Apply reverse on top of working copy
+jj revert -r abc123 --insert-after main  # Insert after main
+```
+
+---
+
+### `jj absorb`
+
+Move changes from a revision into the stack of mutable ancestors where those lines were last modified.
+
+**Usage:**
+```bash
+jj absorb [OPTIONS] [FILESETS]...
+```
+
+**Options:**
+- `-f, --from <REVSET>` - Source revision (default: `@`)
+- `-t, --into <REVSETS>` - Destination revisions (default: `mutable()`, ancestors only)
+- `[FILESETS]...` - Restrict to specific paths
+
+If all changes are absorbed and the source has no description, it is automatically abandoned. Review with `jj op show -p`.
+
+**Examples:**
+```bash
+jj absorb                  # Absorb all working copy changes into appropriate ancestors
+jj absorb src/lib.rs       # Absorb changes to one file only
+jj absorb --from @         # Explicit source
+```
+
+---
+
+### `jj arrange`
+
+Interactively arrange the commit graph using a TUI.
+
+**Usage:**
+```bash
+jj arrange [REVSETS]...
+```
+
+**Options:**
+- `[REVSETS]...` - Revisions to arrange (default: `revsets.arrange` config)
+
+---
+
+### `jj simplify-parents`
+
+Remove redundant parent edges — parents that are already reachable through other parents.
+
+**Usage:**
+```bash
+jj simplify-parents [OPTIONS]
+```
+
+**Options:**
+- `-r, --revision <REVSETS>` - Simplify these specific revisions
+- `-s, --source <REVSETS>` - Simplify these revisions and their mutable descendants
+
+Default when no flags given: `reachable(@, mutable())`.
+
+**Examples:**
+```bash
+jj simplify-parents             # Clean up entire mutable stack
+jj simplify-parents -r abc123   # Clean up one commit
+```
+
+---
+
+### `jj fix`
+
+Apply code formatters or other file-content tools across mutable revisions.
+
+**Usage:**
+```bash
+jj fix [OPTIONS] [FILESETS]...
+```
+
+**Options:**
+- `-s, --source <REVSETS>` - Fix this revision and all descendants (default: `reachable(@, mutable())`)
+- `--include-unchanged-files` - Also fix files not modified by the revision
+- `[FILESETS]...` - Restrict to specific paths
+
+Requires configuration in `.jj/config.toml` or `~/.jjconfig.toml`:
+```toml
+[fix.tools.clang-format]
+command = ["/usr/bin/clang-format", "--assume-filename=$path"]
+patterns = ["glob:'**/*.cc'", "glob:'**/*.h'"]
+```
+
+Tools must produce deterministic output (jj deduplicates identical inputs). Review with `jj op show -p`.
+
+**Examples:**
+```bash
+jj fix                          # Format all mutable revisions
+jj fix -s abc123                # Format from a specific commit down
+jj fix src/                     # Format only src/ files
 ```
 
 ---
@@ -744,6 +988,49 @@ jj bookmark rename <old> <new>
 **Examples:**
 ```bash
 jj bookmark rename old-name new-name
+```
+
+---
+
+## Tags
+
+Tags are immutable named pointers to commits (unlike bookmarks, which move). They map to Git tags in colocated repos.
+
+### `jj tag set`
+
+Create or update a tag.
+
+**Usage:**
+```bash
+jj tag set <name> [-r <REVSET>]
+```
+
+**Examples:**
+```bash
+jj tag set v1.0.0              # Tag working copy
+jj tag set v1.0.0 -r abc123    # Tag specific commit
+```
+
+---
+
+### `jj tag list`
+
+List tags.
+
+**Usage:**
+```bash
+jj tag list
+```
+
+---
+
+### `jj tag delete`
+
+Delete a tag.
+
+**Usage:**
+```bash
+jj tag delete <name>
 ```
 
 ---

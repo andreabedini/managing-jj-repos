@@ -657,7 +657,7 @@ Keep remote bookmarks in sync.
 ## Further Reading
 
 - [SKILL.md](SKILL.md) - Main skill overview
-- [GIT-COMPARISON.md](GIT-COMPARISON.md) - Git to jj translations
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - Fix common problems
-- [REFERENCE.md](REFERENCE.md) - Complete command reference
-- [GLOSSARY.md](GLOSSARY.md) - Term definitions
+- [GIT-COMPARISON.md](../jj-migrate/GIT-COMPARISON.md) - Git to jj translations
+- [TROUBLESHOOTING.md](../jj-troubleshoot/TROUBLESHOOTING.md) - Fix common problems
+- [REFERENCE.md](../jj-reference/REFERENCE.md) - Complete command reference
+- [GLOSSARY.md](../jj-reference/GLOSSARY.md) - Term definitions

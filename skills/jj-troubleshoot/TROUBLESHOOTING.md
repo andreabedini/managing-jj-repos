@@ -63,36 +63,23 @@ Added 1 commits, modified 1 commits, removed 1 commits
 Added working copy commit as mzvwutvl e5251d63 (divergent) (empty)
 ```
 
-**Cause:** Two visible commits share the same change ID. Usually from concurrent operations or complex rebasing.
+**Cause:** Multiple visible commits share the same change ID but different commit IDs. Common after a remote rebases a commit that you also have locally.
 
-**Understanding:** This is often harmless. It happens when:
-- You edit a commit while also rebasing it
-- Multiple workspaces modify the same change
-- Race conditions in concurrent operations
-
-**Solutions:**
-
-**Option 1: Squash to merge (if both have useful changes)**
+**Quick fixes:**
 ```bash
-jj squash -r <one-divergent-id> --into <other-divergent-id>
+# Abandon the obsolete version
+jj abandon <unwanted-id>
+
+# Or give one version a new change ID (keeps both as separate changes)
+jj metaedit --update-change-id <id>
+
+# Or merge both into one
+jj squash --from <source> --into <target>
 ```
 
-**Option 2: Abandon one (if duplicate)**
-```bash
-jj abandon <unwanted-divergent-id>
-```
+**Note:** When divergence exists, change IDs are ambiguous — use `CHANGEID/0` / `CHANGEID/1` offsets to refer to specific versions unambiguously.
 
-**Option 3: Continue working (often fine)**
-- If one is empty or not needed, just continue
-- jj will handle it automatically in many cases
-
-**Verification:**
-```bash
-jj log
-```
-Should show resolved state.
-
-**Prevention:** Generally unavoidable and harmless. Don't worry unless it causes actual problems.
+**Widespread divergence?** Use **`/jj-divergent`** for a systematic 8-step cleanup covering root-cause triage, safety checks, remote bookmark handling, and verification.
 
 ---
 

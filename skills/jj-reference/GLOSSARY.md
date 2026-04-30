@@ -156,16 +156,21 @@ Complete history of all operations performed in the repository. Your safety net 
 
 ### Divergent Change
 
-When multiple visible commits share the same change ID.
+When multiple visible commits share the same change ID but have different commit IDs. They appear in `jj log` with offset labels like `/0`, `/1`.
 
-**Causes:**
-- Concurrent modifications in multiple workspaces
-- Complex rebase scenarios
-- Race conditions in operations
+**Common causes:**
+- A remote rebases a commit → jj imports the new commit ID but keeps the old one visible
+- A hidden commit becomes visible again (via `jj new REV`, `jj edit REV`, fetching, or adding a bookmark)
+- Concurrent modifications across multiple workspaces
 
-**Indicator:** Log shows `(divergent)` annotation
+**Important:** When divergence exists, change IDs are ambiguous. Use commit IDs or `CHANGEID/0` / `CHANGEID/1` offsets to refer to specific versions unambiguously.
 
-**Usually harmless:** Often resolves itself or can be fixed with `jj squash` or `jj abandon`.
+**Resolution options:**
+- `jj abandon <unwanted-id>` — discard the obsolete version
+- `jj metaedit --update-change-id <id>` — give one version a fresh change ID (keep both as separate changes)
+- `jj squash --from <source> --into <target>` — merge both into one
+
+For widespread divergence from remote rebases, use **`/jj-divergent`** — systematic 8-step cleanup.
 
 ---
 

@@ -41,18 +41,14 @@ jj git push --bookmark main
 ### "Divergent changes"
 **Warning:** `Added working copy commit as ... (divergent)`
 
-**Explanation:** Two visible commits share the same change ID (usually harmless).
+**Explanation:** Two visible commits share the same change ID. Often from remote rebases importing a new `commit_id` while the old one stays visible.
 
-**Solutions:**
+For a single stray divergent commit, abandon the unwanted version:
 ```bash
-# Option 1: Squash to merge
-jj squash -r <one-id> --into <other-id>
-
-# Option 2: Abandon one
 jj abandon <unwanted-id>
-
-# Option 3: Continue working (often fine)
 ```
+
+For widespread divergence across many commits, use **`/jj-divergent`** — it provides a systematic 8-step cleanup procedure including root-cause identification, safety checks, and remote bookmark handling.
 
 ### "Stale working copy"
 **Error:** `Working copy is stale`
@@ -276,6 +272,7 @@ For comprehensive troubleshooting:
 
 - **`/jj`** - Return to normal operations after resolving issues
 - **`/jj-migrate`** - If issues stem from Git mental model confusion
+- **`/jj-divergent`** - Systematic cleanup of widespread divergent commits
 
 ## Diagnostic Commands
 

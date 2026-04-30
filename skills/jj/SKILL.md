@@ -16,6 +16,9 @@ jj log                   # View commit history
 jj describe -m "msg"     # Set description of working copy
 jj commit -m "msg"       # Create commit with message
 jj new [parent]          # Create new empty commit
+jj absorb                # Move working copy changes into the ancestor that last touched each line
+jj next [N]              # Move working copy to child (new empty commit on top)
+jj prev [N]              # Move working copy to parent
 jj git fetch             # Fetch from remote
 jj git push --bookmark <name>  # Push bookmark
 ```
@@ -56,6 +59,7 @@ See [WORKFLOWS.md](WORKFLOWS.md) for detailed step-by-step checklists covering:
 | Create new commit      | `jj new`                            |
 | Amend description      | `jj describe -r <id> -m "..."`      |
 | Squash into parent     | `jj squash -r <change-id>`          |
+| Absorb into ancestors  | `jj absorb`                         |
 | Split commit           | `jj split -r <change-id>`           |
 | Rebase onto new parent | `jj rebase -r <id> -d <dest>`       |
 | Create bookmark        | `jj bookmark create <name>`         |
@@ -94,8 +98,8 @@ author(alice)      # Commits by alice
 
 **For comprehensive details:**
 - **[WORKFLOWS.md](WORKFLOWS.md)** - Step-by-step checklists (beginner/intermediate/advanced)
-- **[REFERENCE.md](../managing-jj-repos/REFERENCE.md)** - Complete command reference with all options
-- **[GLOSSARY.md](../managing-jj-repos/GLOSSARY.md)** - Term definitions
+- **[REFERENCE.md](../jj-reference/REFERENCE.md)** - Complete command reference with all options
+- **[GLOSSARY.md](../jj-reference/GLOSSARY.md)** - Term definitions
 
 **For Git users:**
 - **`/jj-migrate`** - Git to jj migration help
