@@ -207,12 +207,15 @@ jj log [options] [paths...]
 
 **Examples:**
 ```bash
-jj log                          # Show all history
-jj log -n 10                    # Show last 10 commits
-jj log -r ::@                   # Show ancestors of @
-jj log -r main..@               # Show commits between main and @
-jj log src/                     # Show commits touching src/
-jj log -T 'builtin_log_oneline' # One-line format
+jj log                                    # Show all history
+jj log -n 10                              # Show last 10 commits
+jj log -r ::@                             # Show ancestors of @
+jj log -r main..@                         # Show commits between main and @
+jj log src/                               # Show commits touching src/ (path argument)
+jj log -r 'files(src/) & mine()'         # Revset form: your commits touching src/
+jj log -r 'conflicts()'                  # Show conflicted commits
+jj log -r 'reachable(@, mutable())'      # Your current working stack
+jj log -T 'builtin_log_oneline'          # One-line format
 ```
 
 **Symbols in output:**
@@ -359,6 +362,25 @@ Shows how a change ID has evolved through rewrites.
 jj evolog -r @       # Show evolution of current commit
 jj evolog -r abc123  # Show evolution of change
 ```
+
+---
+
+### `jj file show`
+
+Show file contents at a specific revision (like `git show <rev>:<path>`).
+
+**Usage:**
+```bash
+jj file show -r <revset> <path>
+```
+
+**Examples:**
+```bash
+jj file show -r @- src/main.rs         # File at parent commit
+jj file show -r abc123 src/main.rs     # File at specific change
+```
+
+For conflicted commits, shows the raw conflict markers as stored in the commit — more informative than `jj diff -r` for understanding multi-sided conflicts.
 
 ---
 
@@ -593,14 +615,18 @@ jj squash [options]
 **Options:**
 - `-r <revset>` - Squash specific revision (default: `@`)
 - `--into <dest>` - Squash into specific commit (default: parent)
+- `-u` / `--use-destination-message` - Keep destination's description (no editor)
+- `-m <message>` - Set description of result explicitly
 - `-i` / `--interactive` - Interactively select changes
-- `-m <message>` - Set description of result
+
+**Description handling:** If the source is abandoned and both source and destination have non-empty descriptions, jj opens an editor to combine them. If either is empty, jj uses the non-empty one automatically. Use `-u` to always keep the destination's message without being asked.
 
 **Examples:**
 ```bash
 jj squash                      # Squash @ into parent
 jj squash -r abc123            # Squash commit into its parent
 jj squash --into xyz789        # Squash @ into specific commit
+jj squash -u                   # Squash, keeping destination's message
 jj squash -i                   # Interactively select changes
 ```
 
@@ -850,14 +876,17 @@ jj resolve [<paths>...]
 ```
 
 **Options:**
+- `-r <revset>` - Resolve conflicts in specific revision (default: `@`)
 - `paths...` - Files to resolve
+- `--list` - List conflicted files without opening resolver
 
 Helps resolve conflicts by marking them resolved.
 
 **Examples:**
 ```bash
 jj resolve src/main.rs
-jj resolve --list             # List conflicted files
+jj resolve --list                    # List conflicted files in @
+jj resolve --list -r abc123          # List conflicted files in a specific commit (without checkout)
 ```
 
 ---
@@ -1345,20 +1374,79 @@ Revsets are jj's query language for selecting commits.
 
 ### Functions
 
+**Filtering by content / metadata:**
+
 | Function | Meaning |
 |----------|---------|
 | `description(pattern)` | Commits with pattern in description |
-| `author(pattern)` | Commits by author |
-| `committer(pattern)` | Commits by committer |
-| `mine()` | Your commits |
-| `empty()` | Commits with no changes |
-| `heads(x)` | Heads (commits with no descendants) in x |
-| `roots(x)` | Roots (commits with no parents) in x |
-| `ancestors(x)` | All ancestors of x |
-| `descendants(x)` | All descendants of x |
-| `connected(x)` | Commits connected to x |
+| `subject(pattern)` | Commits with pattern in the first line of description |
+| `author(pattern)` | Commits by author name or email |
+| `committer(pattern)` | Commits by committer name or email |
+| `author_date(pattern)` | Commits with author date matching `after:"..."` / `before:"..."` |
+| `committer_date(pattern)` | Commits with committer date matching `after:"..."` / `before:"..."` |
+| `mine()` | Your commits (matches configured user email) |
+| `empty()` | Commits with no file changes |
+| `merges()` | Merge commits (more than one parent) |
+| `conflicts()` | Commits that have files in a conflicted state |
+| `divergent()` | Commits with a divergent change ID |
+| `signed()` | Cryptographically signed commits |
+
+**Filtering by touched files:**
+
+| Function | Meaning |
+|----------|---------|
+| `files(expression)` | Commits modifying paths matching a [fileset expression](https://martinvonz.github.io/jj/latest/filesets/); e.g. `files(src/)` or `files("*.rs")` |
+| `diff_lines(text, [files])` | Commits whose diff contains a matching line; e.g. `diff_lines("TODO", "src")` |
+| `diff_lines_added(text, [files])` | Like `diff_lines()` but matches only added lines |
+| `diff_lines_removed(text, [files])` | Like `diff_lines()` but matches only removed lines |
+
+**Navigating the graph:**
+
+| Function | Meaning |
+|----------|---------|
+| `ancestors(x, [depth])` | All ancestors of x (optionally limited by depth) |
+| `descendants(x, [depth])` | All descendants of x (optionally limited by depth) |
+| `parents(x, [depth])` | Parents of x (same as `x-`) |
+| `children(x, [depth])` | Children of x (same as `x+`) |
+| `heads(x)` | Commits in x that are not ancestors of other commits in x |
+| `roots(x)` | Commits in x that are not descendants of other commits in x |
+| `connected(x)` | Same as `x::x`; useful when x spans several disconnected commits |
+| `reachable(srcs, domain)` | All commits reachable from `srcs` within `domain` by any edge; e.g. `reachable(@, mutable())` is your current stack |
+| `fork_point(x)` | The common ancestor(s) of all commits in x |
+| `latest(x, [count])` | Latest `count` commits in x by committer timestamp (default: 1) |
+
+**Named references:**
+
+| Function | Meaning |
+|----------|---------|
+| `bookmarks([pattern])` | All local bookmark targets (optionally filtered by name pattern) |
+| `remote_bookmarks([name], [remote=])` | All remote bookmark targets (optionally filtered) |
+| `tracked_remote_bookmarks(...)` | Targets of tracked remote bookmarks |
+| `untracked_remote_bookmarks(...)` | Targets of untracked remote bookmarks |
+| `tags([pattern])` | All tag targets |
+| `trunk()` | Head of the default remote branch (e.g. `main@origin`) |
+| `visible_heads()` | All visible head commits |
+| `working_copies()` | Working-copy commits across all workspaces |
+
+**Mutability:**
+
+| Function | Meaning |
+|----------|---------|
+| `mutable()` | Commits jj treats as mutable (safe to rewrite) |
+| `immutable()` | Commits jj treats as immutable (trunk and its ancestors, tags, etc.) |
+| `immutable_heads()` | The heads of the immutable set (override in config to expand) |
+
+**Utility:**
+
+| Function | Meaning |
+|----------|---------|
 | `all()` | All visible commits |
-| `visible_heads()` | All head commits |
+| `none()` | Empty set |
+| `root()` | The virtual root commit |
+| `present(x)` | Same as `x`, but evaluates to `none()` instead of erroring if x doesn't exist |
+| `coalesce(r1, r2, ...)` | First revset in the list that doesn't evaluate to `none()` |
+| `at_operation(op, x)` | Evaluate `x` as it was at a past operation; e.g. `at_operation(@-, visible_heads())` |
+| `bisect(x)` | Commits in x near the halfway point; useful for manual bisection |
 
 ### Practical Examples
 
@@ -1389,6 +1477,39 @@ jj log -r 'heads(all())'
 
 # Descendants of main
 jj log -r 'main::'
+
+# Commits touching src/ (revset form, combinable with other filters)
+jj log -r 'files(src/)'
+
+# Commits touching a specific file by Alice
+jj log -r 'files(src/auth.rs) & author(alice)'
+
+# Commits that added or removed a TODO comment in src/
+jj log -r 'diff_lines("TODO", "src")'
+
+# Find all conflicted commits in the repo
+jj log -r 'conflicts()'
+
+# Your current mutable stack
+jj log -r 'reachable(@, mutable())'
+
+# Commits on bookmarks or tags (like git --simplify-by-decoration)
+jj log -r 'bookmarks() | tags()'
+
+# Commits not yet on any remote
+jj log -r 'remote_bookmarks()..'
+
+# The 5 most recent commits by alice
+jj log -r 'latest(author(alice), 5)'
+
+# Commits authored since yesterday
+jj log -r 'author_date(after:"yesterday")'
+
+# All merge commits
+jj log -r 'merges()'
+
+# View heads as they were before the last operation
+jj log -r 'at_operation(@-, visible_heads())'
 ```
 
 ---

@@ -103,7 +103,9 @@ Essential commands for understanding repository state.
 - [ ] View specific commit: `jj show <change-id>`
 - [ ] View working copy changes: `jj diff`
 - [ ] View specific commit changes: `jj diff -r <change-id>`
-- [ ] View file history: `jj log <file-path>`
+- [ ] View file history: `jj log <file-path>` or `jj log -r 'files(<path>)'` as a revset (combinable with `&`, `|`, `~`)
+- [ ] Find commits touching a specific file by you: `jj log -r 'files(src/auth.rs) & mine()'`
+- [ ] Find conflicted commits: `jj log -r 'conflicts()'`
 - [ ] Check working copy status: `jj status`
 
 **Success criteria:** You can understand what commits exist and what has changed.
@@ -369,6 +371,8 @@ Handle and resolve merge conflicts.
 - [ ] Identify conflict in log:
   ```bash
   jj log
+  # or, to list only conflicted commits across the whole repo:
+  jj log -r 'conflicts()'
   ```
   - Look for `×` marker next to conflicted commit
 - [ ] Create working copy on conflicted commit:

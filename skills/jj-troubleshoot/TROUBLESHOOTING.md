@@ -369,8 +369,9 @@ Now `jj log` shows only ancestors and descendants of working copy.
    ```bash
    jj op restore <operation-id>
    ```
+   **Note:** Use `jj op restore <id>` to go to a specific past operation. `jj op undo` (no ID) only undoes the _most recent_ operation — it does not accept an operation ID.
 
-5. Or undo recent operations:
+5. Or undo the most recent operation:
    ```bash
    jj undo
    # Repeat if needed
@@ -422,7 +423,7 @@ May show "conflict" markers if working copy is conflicted.
 
 ### Understanding Conflict Markers
 
-jj uses 3-way conflict markers:
+jj uses 3-way conflict markers. In simple merges they look like:
 
 ```
 <<<<<<< Conflict 1 of 1
@@ -435,43 +436,69 @@ changes from second parent
 >>>>>>> Conflict 1 of 1 ends
 ```
 
-**Parts:**
-- **Side #1:** Changes from one parent (e.g., your work)
-- **Base:** Original content before changes
-- **Side #2:** Changes from other parent (e.g., remote work)
+**During rebases, the headers carry commit metadata** — the change ID, commit hash, and first line of the description of each side:
 
-**Resolution:** Edit file to remove markers and keep desired content.
+```
+<<<<<<< Conflict 1 of 1
++++++++ Contents of side #1 (rebase destination)
+                             ^ this is your new base
+------- Contents of base (parents of rebased revision)
+                           ^ the old base before rebase
++++++++ Contents of side #2 (rebased revision)
+                             ^ the commit being rebased in
+>>>>>>> Conflict 1 of 1 ends
+```
+
+Reading these labels tells you _why_ each conflict exists without consulting the log. "Rebase destination" is where you're landing; "rebased revision" is what the commit was adding; "base" is what it started from.
+
+A conflict can have more than two sides if multiple ancestors all modified the same region — each gets its own `+++++++` block.
+
+**Resolution:** Edit the file to remove all markers and keep the desired content, then `jj squash` the resolution back.
 
 ---
 
 ### Step-by-Step Resolution
+
+0. **Survey which files are conflicted** (without checking out the commit):
+   ```bash
+   jj resolve --list -r <conflicted-change-id>
+   ```
+   Faster than `jj diff -r` when you just want the list.
 
 1. **Create working copy on conflict:**
    ```bash
    jj new <conflicted-change-id>
    ```
 
-2. **Edit conflicted files:**
+2. **Inspect the raw conflict markers if needed:**
+   ```bash
+   jj file show -r <conflicted-change-id> src/file.rs
+   ```
+   Shows the conflict markers as they exist in the commit, useful for multi-sided conflicts.
+
+3. **Edit conflicted files:**
    - Open files in editor
-   - Remove conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)
+   - Remove conflict markers
    - Keep desired content from sides and/or base
    - Save files
 
-3. **Review resolution:**
+4. **Review resolution:**
    ```bash
    jj diff
    ```
+   jj also shows "Conflict in parent commit has been resolved in working copy" in `jj st` output when it detects a resolution.
 
-4. **Squash resolution into conflicted commit:**
+5. **Squash resolution into conflicted commit, preserving its message:**
    ```bash
-   jj squash
+   jj squash --use-destination-message   # or -u
    ```
+   The editor opens only when *both* the resolution commit and the destination have non-empty descriptions. Use `-u` to always keep the destination's message. Use `-m "..."` to provide a specific message.
 
-5. **Verify conflict resolved:**
+6. **Verify conflict resolved:**
    ```bash
    jj log
    ```
-   The `×` marker should be gone.
+   The `×` marker should be gone. Run `jj log -r 'conflicts()'` to check for any remaining conflicted commits across the whole repo.
 
 ---
 
@@ -486,6 +513,21 @@ jj abandon <conflicted-change-id>
 # Redo operation more carefully
 # E.g., rebase one commit at a time
 ```
+
+---
+
+### Squashing a Conflict-Resolution Commit Can Re-Introduce Conflicts
+
+**Situation:** You have a commit `R` that was added specifically to resolve conflicts between some ancestor `A` and its context. You try to squash `R` into `A` (to "absorb" the resolution), but this causes 20+ downstream commits to become conflicted again.
+
+**Why it happens:** Downstream commits were authored against the _already-resolved_ tree that `R` produced. Collapsing `R` into `A` removes that resolved state from the middle of the chain, so every commit that depended on it now conflicts.
+
+**Solution:** Don't squash `R` into `A`. Instead, leave `R` in place as an explicit commit and just rename it to something descriptive:
+```bash
+jj describe -r <R> -m "fix: resolve conflicts from <what A was doing>"
+```
+
+**Rule of thumb:** If a conflict-resolution commit sits between two commits and has downstream dependents, collapsing it is almost always wrong.
 
 ---
 

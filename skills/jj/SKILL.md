@@ -71,14 +71,23 @@ See [WORKFLOWS.md](WORKFLOWS.md) for detailed step-by-step checklists covering:
 ### Revset Examples
 
 ```bash
-@              # Current working copy
-@-             # Parent
-@--            # Grandparent
-::@            # All ancestors of @
-@::            # All descendants of @
-main..@        # Commits in @ but not in main
-description(bug)   # Commits mentioning "bug"
-author(alice)      # Commits by alice
+@                          # Current working copy
+@-                         # Parent
+@--                        # Grandparent
+::@                        # All ancestors of @
+@::                        # All descendants of @
+main..@                    # Commits in @ but not in main
+description(bug)           # Commits mentioning "bug"
+author(alice)              # Commits by alice
+mine()                     # Your own commits
+files(src/)                # Commits touching src/ (combine with & | ~)
+conflicts()                # Commits with unresolved conflicts
+mutable()                  # All mutable (rewritable) commits
+reachable(@, mutable())    # Your current working stack
+merges()                   # Merge commits
+bookmarks()                # Commits pointed to by any bookmark
+latest(x, 5)               # Most recent 5 commits in set x
+author_date(after:"yesterday")  # Commits authored since yesterday
 ```
 
 ## Safety Warnings
